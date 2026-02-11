@@ -15,114 +15,127 @@ branch_labels = None
 depends_on = None
 
 
-document_status_enum = sa.Enum(
-    "pending",
-    "uploaded",
-    "processing",
-    "ready",
-    "error",
-    name="hg_document_status",
-)
-
-ingestion_status_enum = sa.Enum(
-    "queued",
-    "running",
-    "completed",
-    "error",
-    name="hg_ingestion_job_status",
-)
-
-
 def upgrade() -> None:
-    op.execute("CREATE EXTENSION IF NOT EXISTS vector")
+    conn = op.get_bind()
 
-    document_status_enum.create(op.get_bind(), checkfirst=True)
-    ingestion_status_enum.create(op.get_bind(), checkfirst=True)
+    # pgvector extension (optional)
+    try:
+        conn.execute(sa.text("CREATE EXTENSION IF NOT EXISTS vector"))
+    except Exception:
+        pass
 
-    op.create_table(
-        "hg_document",
-        sa.Column("id", sa.Uuid(), primary_key=True),
-        sa.Column("user_id", sa.Uuid(), sa.ForeignKey("user.id"), nullable=False),
-        sa.Column("filename", sa.String(512), nullable=False),
-        sa.Column("doc_type", sa.String(64), nullable=False),
-        sa.Column("status", document_status_enum, nullable=False, server_default="pending"),
-        sa.Column("pages", sa.Integer(), nullable=True),
-        sa.Column("storage_path", sa.String(1024), nullable=False),
-        sa.Column("content_type", sa.String(128), nullable=False),
-        sa.Column("size_bytes", sa.Integer(), nullable=True),
-        sa.Column("etag", sa.String(256), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-    )
-    op.create_index("ix_hg_document_user_id", "hg_document", ["user_id"])
+    # Custom enum types (idempotent)
+    conn.execute(sa.text(
+        "DO $$ BEGIN "
+        "CREATE TYPE hg_document_status AS ENUM ('pending','uploaded','processing','ready','error'); "
+        "EXCEPTION WHEN duplicate_object THEN null; END $$"
+    ))
+    conn.execute(sa.text(
+        "DO $$ BEGIN "
+        "CREATE TYPE hg_ingestion_job_status AS ENUM ('queued','running','completed','error'); "
+        "EXCEPTION WHEN duplicate_object THEN null; END $$"
+    ))
 
-    op.create_table(
-        "hg_document_chunk",
-        sa.Column("id", sa.Uuid(), primary_key=True),
-        sa.Column("document_id", sa.Uuid(), sa.ForeignKey("hg_document.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("chunk_index", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("page", sa.Integer(), nullable=True),
-        sa.Column("content", sa.Text(), nullable=False),
-        sa.Column("token_count", sa.Integer(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+    # ── hg_document ──
+    conn.execute(sa.text("""
+    CREATE TABLE IF NOT EXISTS hg_document (
+        id UUID PRIMARY KEY,
+        user_id UUID NOT NULL REFERENCES "user"(id),
+        filename VARCHAR(512) NOT NULL,
+        doc_type VARCHAR(64) NOT NULL,
+        status hg_document_status NOT NULL DEFAULT 'pending',
+        pages INTEGER,
+        storage_path VARCHAR(1024) NOT NULL,
+        content_type VARCHAR(128) NOT NULL,
+        size_bytes INTEGER,
+        etag VARCHAR(256),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
-    op.create_index("ix_hg_document_chunk_document_id", "hg_document_chunk", ["document_id"])
-    op.execute("ALTER TABLE hg_document_chunk ADD COLUMN embedding_vec vector(384)")
-    op.execute(
-        "CREATE INDEX ix_hg_chunk_embedding_cosine ON hg_document_chunk USING hnsw (embedding_vec vector_cosine_ops)"
-    )
+    """))
+    conn.execute(sa.text("CREATE INDEX IF NOT EXISTS ix_hg_document_user_id ON hg_document(user_id)"))
 
-    op.create_table(
-        "hg_ingestion_job",
-        sa.Column("id", sa.Uuid(), primary_key=True),
-        sa.Column("document_id", sa.Uuid(), sa.ForeignKey("hg_document.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("user_id", sa.Uuid(), sa.ForeignKey("user.id"), nullable=False),
-        sa.Column("status", ingestion_status_enum, nullable=False, server_default="queued"),
-        sa.Column("idempotency_key", sa.String(128), nullable=False),
-        sa.Column("retry_count", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("error_message", sa.String(2048), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+    # ── hg_document_chunk ──
+    conn.execute(sa.text("""
+    CREATE TABLE IF NOT EXISTS hg_document_chunk (
+        id UUID PRIMARY KEY,
+        document_id UUID NOT NULL REFERENCES hg_document(id) ON DELETE CASCADE,
+        chunk_index INTEGER NOT NULL DEFAULT 0,
+        page INTEGER,
+        content TEXT NOT NULL,
+        token_count INTEGER,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
-    op.create_index("ix_hg_ingestion_job_document_id", "hg_ingestion_job", ["document_id"])
-    op.create_index("ix_hg_ingestion_job_user_id", "hg_ingestion_job", ["user_id"])
-    op.create_index("ix_hg_ingestion_job_idempotency_key", "hg_ingestion_job", ["idempotency_key"])
+    """))
+    conn.execute(sa.text("CREATE INDEX IF NOT EXISTS ix_hg_document_chunk_document_id ON hg_document_chunk(document_id)"))
 
-    op.create_table(
-        "hg_form_submission",
-        sa.Column("id", sa.Uuid(), primary_key=True),
-        sa.Column("user_id", sa.Uuid(), sa.ForeignKey("user.id"), nullable=False),
-        sa.Column("form_data", sa.Text(), nullable=False),
-        sa.Column("field_meta", sa.Text(), nullable=True),
-        sa.Column("status", sa.String(32), nullable=False, server_default="draft"),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-    )
-    op.create_index("ix_hg_form_submission_user_id", "hg_form_submission", ["user_id"])
+    # Vector column (optional)
+    try:
+        conn.execute(sa.text("ALTER TABLE hg_document_chunk ADD COLUMN IF NOT EXISTS embedding_vec vector(384)"))
+        conn.execute(sa.text(
+            "CREATE INDEX IF NOT EXISTS ix_hg_chunk_embedding_cosine "
+            "ON hg_document_chunk USING hnsw (embedding_vec vector_cosine_ops)"
+        ))
+    except Exception:
+        pass
 
-    op.create_table(
-        "hg_audit_report",
-        sa.Column("id", sa.Uuid(), primary_key=True),
-        sa.Column("submission_id", sa.Uuid(), sa.ForeignKey("hg_form_submission.id"), nullable=False),
-        sa.Column("user_id", sa.Uuid(), sa.ForeignKey("user.id"), nullable=False),
-        sa.Column("flags_json", sa.Text(), nullable=False),
-        sa.Column("blockers", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("warnings", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("infos", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("risk", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("coverage_pct", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+    # ── hg_ingestion_job ──
+    conn.execute(sa.text("""
+    CREATE TABLE IF NOT EXISTS hg_ingestion_job (
+        id UUID PRIMARY KEY,
+        document_id UUID NOT NULL REFERENCES hg_document(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES "user"(id),
+        status hg_ingestion_job_status NOT NULL DEFAULT 'queued',
+        idempotency_key VARCHAR(128) NOT NULL,
+        retry_count INTEGER NOT NULL DEFAULT 0,
+        error_message VARCHAR(2048),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
-    op.create_index("ix_hg_audit_report_user_id", "hg_audit_report", ["user_id"])
-    op.create_index("ix_hg_audit_report_submission_id", "hg_audit_report", ["submission_id"])
+    """))
+    conn.execute(sa.text("CREATE INDEX IF NOT EXISTS ix_hg_ingestion_job_document_id ON hg_ingestion_job(document_id)"))
+    conn.execute(sa.text("CREATE INDEX IF NOT EXISTS ix_hg_ingestion_job_user_id ON hg_ingestion_job(user_id)"))
+    conn.execute(sa.text("CREATE INDEX IF NOT EXISTS ix_hg_ingestion_job_idempotency_key ON hg_ingestion_job(idempotency_key)"))
+
+    # ── hg_form_submission ──
+    conn.execute(sa.text("""
+    CREATE TABLE IF NOT EXISTS hg_form_submission (
+        id UUID PRIMARY KEY,
+        user_id UUID NOT NULL REFERENCES "user"(id),
+        form_data TEXT NOT NULL,
+        field_meta TEXT,
+        status VARCHAR(32) NOT NULL DEFAULT 'draft',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """))
+    conn.execute(sa.text("CREATE INDEX IF NOT EXISTS ix_hg_form_submission_user_id ON hg_form_submission(user_id)"))
+
+    # ── hg_audit_report ──
+    conn.execute(sa.text("""
+    CREATE TABLE IF NOT EXISTS hg_audit_report (
+        id UUID PRIMARY KEY,
+        submission_id UUID NOT NULL REFERENCES hg_form_submission(id),
+        user_id UUID NOT NULL REFERENCES "user"(id),
+        flags_json TEXT NOT NULL,
+        blockers INTEGER NOT NULL DEFAULT 0,
+        warnings INTEGER NOT NULL DEFAULT 0,
+        infos INTEGER NOT NULL DEFAULT 0,
+        risk INTEGER NOT NULL DEFAULT 0,
+        coverage_pct INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """))
+    conn.execute(sa.text("CREATE INDEX IF NOT EXISTS ix_hg_audit_report_user_id ON hg_audit_report(user_id)"))
+    conn.execute(sa.text("CREATE INDEX IF NOT EXISTS ix_hg_audit_report_submission_id ON hg_audit_report(submission_id)"))
 
 
 def downgrade() -> None:
-    op.drop_table("hg_audit_report")
-    op.drop_table("hg_form_submission")
-    op.drop_table("hg_ingestion_job")
-    op.drop_table("hg_document_chunk")
-    op.drop_table("hg_document")
-
-    ingestion_status_enum.drop(op.get_bind(), checkfirst=True)
-    document_status_enum.drop(op.get_bind(), checkfirst=True)
+    conn = op.get_bind()
+    conn.execute(sa.text("DROP TABLE IF EXISTS hg_audit_report CASCADE"))
+    conn.execute(sa.text("DROP TABLE IF EXISTS hg_form_submission CASCADE"))
+    conn.execute(sa.text("DROP TABLE IF EXISTS hg_ingestion_job CASCADE"))
+    conn.execute(sa.text("DROP TABLE IF EXISTS hg_document_chunk CASCADE"))
+    conn.execute(sa.text("DROP TABLE IF EXISTS hg_document CASCADE"))
+    conn.execute(sa.text("DROP TYPE IF EXISTS hg_ingestion_job_status"))
+    conn.execute(sa.text("DROP TYPE IF EXISTS hg_document_status"))

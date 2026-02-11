@@ -3,11 +3,17 @@ from datetime import datetime, timezone
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session, col, select
+from sqlmodel import Session, col, delete, select
 
 from app.api.routes import housing_grant
 from app.core.config import settings
-from app.housing_grant_db_models import HGDocument, HGIngestionJob
+from app.housing_grant_db_models import (
+    HGAuditReport,
+    HGDocument,
+    HGDocumentChunk,
+    HGFormSubmission,
+    HGIngestionJob,
+)
 from app.housing_grant_ingestion import run_ingestion_job
 from app.housing_grant_models import HGDocType, HGDocumentStatus, HGIngestionJobStatus
 from app.models import User
@@ -22,6 +28,17 @@ def _get_normal_user(db: Session) -> User:
     user = db.exec(select(User).where(col(User.email) == settings.EMAIL_TEST_USER)).first()
     assert user is not None
     return user
+
+
+@pytest.fixture(autouse=True)
+def _cleanup_housing_rows(db: Session) -> None:
+    yield
+    db.execute(delete(HGAuditReport))
+    db.execute(delete(HGFormSubmission))
+    db.execute(delete(HGDocumentChunk))
+    db.execute(delete(HGIngestionJob))
+    db.execute(delete(HGDocument))
+    db.commit()
 
 
 @pytest.mark.parametrize(
@@ -151,11 +168,12 @@ def test_ingestion_job_transitions_to_ready(
 
     def _store_chunks(
         *,
-        _session: Session,
-        _document_id: uuid.UUID,
-        _text: str,
-        _page: int | None,
+        session: Session,
+        document_id: uuid.UUID,
+        text: str,
+        page: int | None,
     ) -> int:
+        _ = session, document_id, text, page
         return 2
 
     monkeypatch.setattr("app.housing_grant_ingestion.get_storage_client", lambda: GoodStorage())
@@ -273,10 +291,11 @@ def test_suggest_returns_grounded_citations(
             }
         ],
     )
-    monkeypatch.setattr(
-        housing_grant,
-        "awaitable_to_sync",
-        lambda _awaitable: {
+    def _fake_awaitable_to_sync(awaitable: object) -> dict[str, object]:
+        close = getattr(awaitable, "close", None)
+        if callable(close):
+            close()
+        return {
             "field_id": "monthly_rent",
             "suggested_value": "1200",
             "confidence": 0.91,
@@ -295,8 +314,9 @@ def test_suggest_returns_grounded_citations(
             "flags": [],
             "model": "test-model",
             "usage": {"input_tokens": 10, "output_tokens": 5},
-        },
-    )
+        }
+
+    monkeypatch.setattr(housing_grant, "awaitable_to_sync", _fake_awaitable_to_sync)
 
     response = client.post(
         _api("/suggest"),

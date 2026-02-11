@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 import sqlalchemy as sa
 from sqlalchemy import Column, Text
-from sqlmodel import Field, Relationship, SQLModel
+from sqlmodel import Field, SQLModel
 
 from app.housing_grant_models import HGDocumentStatus, HGIngestionJobStatus
 
@@ -49,10 +49,6 @@ class HGDocument(SQLModel, table=True):
     created_at: datetime = Field(default_factory=_utcnow)
     updated_at: datetime = Field(default_factory=_utcnow)
 
-    chunks: list[HGDocumentChunk] = Relationship(back_populates="document", cascade_delete=True)
-    ingestion_jobs: list[HGIngestionJob] = Relationship(back_populates="document", cascade_delete=True)
-
-
 class HGDocumentChunk(SQLModel, table=True):
     __tablename__ = "hg_document_chunk"
 
@@ -63,9 +59,6 @@ class HGDocumentChunk(SQLModel, table=True):
     content: str = Field(sa_column=Column(Text, nullable=False))
     token_count: int | None = None
     created_at: datetime = Field(default_factory=_utcnow)
-
-    document: HGDocument | None = Relationship(back_populates="chunks")
-
 
 if HAS_PGVECTOR:
     HGDocumentChunk.__table__.append_column(  # type: ignore[attr-defined]
@@ -92,9 +85,6 @@ class HGIngestionJob(SQLModel, table=True):
     error_message: str | None = Field(default=None, max_length=2048)
     created_at: datetime = Field(default_factory=_utcnow)
     updated_at: datetime = Field(default_factory=_utcnow)
-
-    document: HGDocument | None = Relationship(back_populates="ingestion_jobs")
-
 
 class HGFormSubmission(SQLModel, table=True):
     __tablename__ = "hg_form_submission"
