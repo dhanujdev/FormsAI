@@ -94,6 +94,19 @@ class Settings(BaseSettings):
 
     # ── LLM ──
     ANTHROPIC_API_KEY: str | None = None
+    HOUSING_LLM_MODEL: str = "claude-sonnet-4-20250514"
+    HOUSING_RAG_TOP_K: int = 5
+
+    # ── Housing Grant storage / ingestion ──
+    HOUSING_STORAGE_PROVIDER: Literal["s3"] = "s3"
+    HOUSING_S3_BUCKET: str = "formsai-housing-grant-dev"
+    HOUSING_S3_REGION: str = "us-east-1"
+    HOUSING_S3_ENDPOINT_URL: str | None = None
+    HOUSING_S3_FORCE_PATH_STYLE: bool = True
+    HOUSING_S3_PREFIX: str = "housing-grant"
+    HOUSING_S3_UPLOAD_EXPIRES_SECONDS: int = 900
+    HOUSING_INGESTION_MAX_BYTES: int = 15 * 1024 * 1024
+    HOUSING_INGESTION_RETRY_LIMIT: int = 3
 
     FIRST_SUPERUSER: EmailStr
     FIRST_SUPERUSER_PASSWORD: str

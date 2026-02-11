@@ -1,4 +1,121 @@
-# FastAPI Project - Deployment
+# Housing Grant Copilot - AWS-First Deployment Package
+
+This section is the production deployment package for the Housing Grant MVP implemented in this repository.
+
+## 1. Target Architecture (AWS-First)
+
+- API service: FastAPI container (ECS Fargate or EKS deployment).
+- Database: Amazon RDS PostgreSQL with `pgvector` enabled.
+- Object storage: Amazon S3 bucket for raw uploads.
+- Secrets: AWS Secrets Manager / SSM Parameter Store.
+- Networking: private subnets for API and DB, public ALB for API ingress.
+- Optional near-term split: dedicated worker service for ingestion jobs (current MVP runs ingestion from API background tasks).
+
+## 2. Environment Variable Matrix
+
+These are required for Housing Grant in addition to baseline app variables.
+
+| Variable | Local Dev (S3-Compatible) | AWS |
+|---|---|---|
+| `HOUSING_STORAGE_PROVIDER` | `s3` | `s3` |
+| `HOUSING_S3_BUCKET` | local bucket name | AWS S3 bucket |
+| `HOUSING_S3_REGION` | `us-east-1` (or local value) | AWS region |
+| `HOUSING_S3_ENDPOINT_URL` | local endpoint (e.g. LocalStack/MinIO URL) | empty |
+| `HOUSING_S3_FORCE_PATH_STYLE` | `True` | `False` |
+| `HOUSING_S3_PREFIX` | `housing-grant` | `housing-grant` |
+| `HOUSING_S3_UPLOAD_EXPIRES_SECONDS` | `900` | `900` |
+| `HOUSING_INGESTION_MAX_BYTES` | `15728640` | match policy |
+| `HOUSING_INGESTION_RETRY_LIMIT` | `3` | `3` |
+| `HOUSING_LLM_MODEL` | configured model | configured model |
+| `ANTHROPIC_API_KEY` | dev secret | injected from Secrets Manager |
+| `POSTGRES_*` | local postgres | RDS endpoint credentials |
+
+## 3. IAM and Security Requirements
+
+- API task role must allow:
+  - `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject`, `s3:HeadObject` on `HOUSING_S3_BUCKET` and configured prefix.
+- API container must receive secrets through environment injection (no hardcoded credentials).
+- S3 bucket should enforce encryption at rest and block public access.
+- RDS security group should only allow ingress from the API service security group.
+
+## 4. Local Runbook (Developer)
+
+1. Copy env template and set values:
+
+```bash
+cp .env.example .env
+```
+
+2. Start local dependencies (Postgres plus S3-compatible endpoint).
+3. Run migrations:
+
+```bash
+cd backend
+uv run alembic upgrade head
+```
+
+4. Start backend and frontend:
+
+```bash
+cd backend
+uv run fastapi dev app/main.py
+```
+
+```bash
+cd frontend
+npm run dev
+```
+
+5. Validate core flow:
+  - Login.
+  - Upload a document in Housing Grant page.
+  - Confirm status transitions to `ready` or `error`.
+  - Run `Suggest all`.
+  - Run `Preview Audit`.
+  - Save submission.
+
+## 5. AWS Deployment Checklist
+
+1. Provision:
+  - S3 bucket.
+  - RDS PostgreSQL (with pgvector extension enabled).
+  - Container runtime (ECS/EKS).
+  - Secret store entries.
+2. Build and publish API/frontend images.
+3. Deploy API with environment/secret injection.
+4. Run DB migrations (`alembic upgrade head`) against RDS.
+5. Deploy frontend.
+6. Run smoke tests (below).
+
+## 6. Smoke-Test Checklist
+
+- `GET /api/v1/health` (or equivalent app health endpoint) returns 200.
+- Auth token generation works.
+- `POST /api/v1/housing-grant/documents/upload-url` returns signed URL payload for authenticated user.
+- Upload completion endpoint returns `uploaded`.
+- Ingestion transitions document to `ready` (or `error` with explicit reason).
+- `POST /api/v1/housing-grant/suggest`:
+  - returns 200 with citations when Anthropic is configured.
+  - returns 503 hard-fail when Anthropic is missing/unavailable.
+- `POST /api/v1/housing-grant/preview-audit` returns warning for missing evidence where applicable.
+- `POST /api/v1/housing-grant/submissions` persists submission.
+
+## 7. Operational Baselines
+
+- Log structured events for:
+  - upload init/complete,
+  - ingestion start/success/failure,
+  - suggest request/response errors,
+  - audit and submission saves.
+- Track these counters at minimum:
+  - ingestion success/error count,
+  - average ingestion duration,
+  - suggest success/error count,
+  - 5xx rate on housing-grant endpoints.
+
+---
+
+# FastAPI Project - Deployment (Template Reference)
 
 You can deploy the project using Docker Compose to a remote server.
 

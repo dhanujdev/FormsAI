@@ -1,7 +1,8 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router"
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
 
 import { Footer } from "@/components/Common/Footer"
 import AppSidebar from "@/components/Sidebar/AppSidebar"
+import { isLoggedIn } from "@/hooks/useAuth"
 import {
   SidebarInset,
   SidebarProvider,
@@ -11,14 +12,13 @@ import {
 
 export const Route = createFileRoute("/_layout")({
   component: Layout,
-  // TODO: Re-enable auth guard after testing
-  // beforeLoad: async () => {
-  //   if (!isLoggedIn()) {
-  //     throw redirect({
-  //       to: "/login",
-  //     })
-  //   }
-  // },
+  beforeLoad: async () => {
+    if (!isLoggedIn()) {
+      throw redirect({
+        to: "/login",
+      })
+    }
+  },
 })
 
 function Layout() {

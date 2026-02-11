@@ -1,29 +1,23 @@
-"""Housing Grant database models (SQLModel + pgvector).
-
-Tables:
-  - hg_document       – uploaded documents (lease, paystub, etc.)
-  - hg_document_chunk – text chunks with vector embeddings for RAG
-  - hg_form_submission – saved form snapshots
-  - hg_audit_report   – stored audit results
-"""
+"""Housing Grant database models (SQLModel + pgvector)."""
 
 from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, Text
+import sqlalchemy as sa
+from sqlalchemy import Column, Text
 from sqlmodel import Field, Relationship, SQLModel
 
-# pgvector column type — imported conditionally so the app
-# still starts even without the pgvector extension installed
+from app.housing_grant_models import HGDocumentStatus, HGIngestionJobStatus
+
 try:
     from pgvector.sqlalchemy import Vector
 
-    VECTOR_DIM = 384  # matches fastembed / all-MiniLM-L6-v2
+    VECTOR_DIM = 384
     HAS_PGVECTOR = True
 except ImportError:
-    Vector = None  # type: ignore
+    Vector = None
     VECTOR_DIM = 384
     HAS_PGVECTOR = False
 
@@ -32,33 +26,34 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
-# ─── Document ────────────────────────────────────────────────────────
-
-
 class HGDocument(SQLModel, table=True):
-    """An uploaded document (lease, paystub, utility bill, provider letter)."""
-
     __tablename__ = "hg_document"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     user_id: uuid.UUID = Field(foreign_key="user.id", nullable=False, index=True)
     filename: str = Field(max_length=512)
-    doc_type: str = Field(max_length=64)  # lease | paystub | utility | provider_letter
-    status: str = Field(default="pending", max_length=32)  # pending | processing | ready | error
+    doc_type: str = Field(max_length=64)
+    status: HGDocumentStatus = Field(
+        default=HGDocumentStatus.pending,
+        sa_column=Column(
+            sa.Enum(HGDocumentStatus, name="hg_document_status"),
+            nullable=False,
+            server_default=HGDocumentStatus.pending.value,
+        ),
+    )
     pages: int | None = None
-    storage_path: str | None = Field(default=None, max_length=1024)
-    created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=True))  # type: ignore
+    storage_path: str = Field(max_length=1024)
+    content_type: str = Field(max_length=128)
+    size_bytes: int | None = None
+    etag: str | None = Field(default=None, max_length=256)
+    created_at: datetime = Field(default_factory=_utcnow)
+    updated_at: datetime = Field(default_factory=_utcnow)
 
-    # relationships
-    chunks: list["HGDocumentChunk"] = Relationship(back_populates="document", cascade_delete=True)
-
-
-# ─── Document Chunk (with vector embedding) ─────────────────────────
+    chunks: list[HGDocumentChunk] = Relationship(back_populates="document", cascade_delete=True)
+    ingestion_jobs: list[HGIngestionJob] = Relationship(back_populates="document", cascade_delete=True)
 
 
 class HGDocumentChunk(SQLModel, table=True):
-    """A text chunk extracted from a document, with an embedding vector for RAG."""
-
     __tablename__ = "hg_document_chunk"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
@@ -67,55 +62,62 @@ class HGDocumentChunk(SQLModel, table=True):
     page: int | None = None
     content: str = Field(sa_column=Column(Text, nullable=False))
     token_count: int | None = None
-    # NOTE: The embedding_vec column is added dynamically below via pgvector.
-    # Do NOT add a `list[float]` field here — SQLModel cannot map it.
+    created_at: datetime = Field(default_factory=_utcnow)
 
-    created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=True))  # type: ignore
-
-    # relationships
     document: HGDocument | None = Relationship(back_populates="chunks")
 
 
-# If pgvector is installed, add the vector column properly
 if HAS_PGVECTOR:
-    # Add the vector column via SQLAlchemy column override
-    HGDocumentChunk.__table__.append_column(  # type: ignore
+    HGDocumentChunk.__table__.append_column(  # type: ignore[attr-defined]
         Column("embedding_vec", Vector(VECTOR_DIM), nullable=True)
     )
 
 
-# ─── Form Submission ────────────────────────────────────────────────
+class HGIngestionJob(SQLModel, table=True):
+    __tablename__ = "hg_ingestion_job"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    document_id: uuid.UUID = Field(foreign_key="hg_document.id", nullable=False, index=True)
+    user_id: uuid.UUID = Field(foreign_key="user.id", nullable=False, index=True)
+    status: HGIngestionJobStatus = Field(
+        default=HGIngestionJobStatus.queued,
+        sa_column=Column(
+            sa.Enum(HGIngestionJobStatus, name="hg_ingestion_job_status"),
+            nullable=False,
+            server_default=HGIngestionJobStatus.queued.value,
+        ),
+    )
+    idempotency_key: str = Field(max_length=128, index=True)
+    retry_count: int = 0
+    error_message: str | None = Field(default=None, max_length=2048)
+    created_at: datetime = Field(default_factory=_utcnow)
+    updated_at: datetime = Field(default_factory=_utcnow)
+
+    document: HGDocument | None = Relationship(back_populates="ingestion_jobs")
 
 
 class HGFormSubmission(SQLModel, table=True):
-    """A snapshot of the form data at a point in time."""
-
     __tablename__ = "hg_form_submission"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     user_id: uuid.UUID = Field(foreign_key="user.id", nullable=False, index=True)
-    form_data: str = Field(sa_column=Column(Text, nullable=False))  # JSON blob
-    field_meta: str | None = Field(default=None, sa_column=Column(Text))  # JSON blob of suggestion metadata
-    status: str = Field(default="draft", max_length=32)  # draft | submitted | approved
-    created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=True))  # type: ignore
-    updated_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=True))  # type: ignore
-
-
-# ─── Audit Report ───────────────────────────────────────────────────
+    form_data: str = Field(sa_column=Column(Text, nullable=False))
+    field_meta: str | None = Field(default=None, sa_column=Column(Text))
+    status: str = Field(default="draft", max_length=32)
+    created_at: datetime = Field(default_factory=_utcnow)
+    updated_at: datetime = Field(default_factory=_utcnow)
 
 
 class HGAuditReport(SQLModel, table=True):
-    """A stored audit result linked to a form submission."""
-
     __tablename__ = "hg_audit_report"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     submission_id: uuid.UUID = Field(foreign_key="hg_form_submission.id", nullable=False, index=True)
     user_id: uuid.UUID = Field(foreign_key="user.id", nullable=False, index=True)
-    flags_json: str = Field(sa_column=Column(Text, nullable=False))  # JSON array of flags
+    flags_json: str = Field(sa_column=Column(Text, nullable=False))
     blockers: int = 0
     warnings: int = 0
     infos: int = 0
     risk: int = 0
     coverage_pct: int = 0
-    created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=True))  # type: ignore
+    created_at: datetime = Field(default_factory=_utcnow)

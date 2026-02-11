@@ -1,16 +1,4 @@
-"""Housing Grant Vector Store Service.
-
-Handles:
-  - Text chunking (fixed-size with overlap)
-  - Embedding generation (fastembed / all-MiniLM-L6-v2)
-  - Storing chunks + embeddings in Postgres via pgvector
-  - Similarity search for RAG retrieval
-
-The service degrades gracefully:
-  - No fastembed → skip embedding generation
-  - No pgvector → skip vector storage/search
-  - No database → return empty results
-"""
+"""Housing Grant vector store helpers."""
 
 from __future__ import annotations
 
@@ -18,141 +6,96 @@ import logging
 import uuid
 from typing import Any
 
+from sqlmodel import Session, col, select
+
 logger = logging.getLogger(__name__)
 
-# ── Embedding model (lazy-loaded) ───────────────────────────────────
-
-_embedding_model = None
-EMBEDDING_DIM = 384  # all-MiniLM-L6-v2 output dimension
+_embedding_model: Any | None = None
+EMBEDDING_DIM = 384
 
 
-def _get_embedding_model():
-    """Lazy-load the fastembed model."""
+def _get_embedding_model() -> Any | None:
     global _embedding_model
     if _embedding_model is None:
         try:
             from fastembed import TextEmbedding
 
             _embedding_model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
-            logger.info("Loaded fastembed model: BAAI/bge-small-en-v1.5")
         except ImportError:
-            logger.warning("fastembed not installed — embeddings disabled")
+            logger.warning("fastembed not installed, embeddings disabled")
             return None
-        except Exception as e:
-            logger.error("Failed to load embedding model: %s", e)
+        except Exception as exc:  # pragma: no cover - defensive path
+            logger.error("Failed loading embedding model: %s", exc)
             return None
     return _embedding_model
 
 
 def embed_texts(texts: list[str]) -> list[list[float]]:
-    """Generate embeddings for a list of texts.
-
-    Returns a list of float vectors, one per input text.
-    Returns empty list if embedding model is not available.
-    """
     model = _get_embedding_model()
     if model is None:
         return []
-
     try:
-        embeddings = list(model.embed(texts))
-        return [emb.tolist() for emb in embeddings]
-    except Exception as e:
-        logger.error("Embedding generation failed: %s", e)
+        vectors = list(model.embed(texts))
+        return [vec.tolist() for vec in vectors]
+    except Exception as exc:
+        logger.error("Embedding generation failed: %s", exc)
         return []
 
 
 def embed_single(text: str) -> list[float] | None:
-    """Generate embedding for a single text."""
-    results = embed_texts([text])
-    return results[0] if results else None
+    vectors = embed_texts([text])
+    return vectors[0] if vectors else None
 
 
-# ── Text chunking ───────────────────────────────────────────────────
-
-
-def chunk_text(
-    text: str,
-    chunk_size: int = 512,
-    chunk_overlap: int = 64,
-) -> list[dict[str, Any]]:
-    """Split text into overlapping chunks.
-
-    Returns list of dicts with:
-      - content: the chunk text
-      - chunk_index: 0-based index
-      - char_start: character offset in original text
-      - char_end: character offset end
-    """
-    if not text or not text.strip():
+def chunk_text(text: str, *, chunk_size: int = 512, chunk_overlap: int = 64) -> list[dict[str, Any]]:
+    if not text.strip():
         return []
 
-    chunks = []
+    chunks: list[dict[str, Any]] = []
     start = 0
     idx = 0
-
     while start < len(text):
         end = min(start + chunk_size, len(text))
-        chunk_text_content = text[start:end].strip()
-
-        if chunk_text_content:
-            chunks.append({
-                "content": chunk_text_content,
-                "chunk_index": idx,
-                "char_start": start,
-                "char_end": end,
-            })
+        content = text[start:end].strip()
+        if content:
+            chunks.append(
+                {
+                    "content": content,
+                    "chunk_index": idx,
+                    "char_start": start,
+                    "char_end": end,
+                }
+            )
             idx += 1
-
-        # Move forward by chunk_size - overlap
         start += chunk_size - chunk_overlap
-        if start >= len(text):
-            break
-
     return chunks
 
 
-# ── Store chunks in database ────────────────────────────────────────
-
-
-async def store_document_chunks(
-    session: Any,
+def store_document_chunks(
+    *,
+    session: Session,
     document_id: uuid.UUID,
     text: str,
-    page: int | None = None,
+    page: int | None,
 ) -> int:
-    """Chunk text, generate embeddings, and store in the database.
-
-    Returns the number of chunks stored.
-    """
-    from app.housing_grant_db_models import HGDocumentChunk, HAS_PGVECTOR
+    from app.housing_grant_db_models import HAS_PGVECTOR, HGDocumentChunk
 
     chunks = chunk_text(text)
     if not chunks:
         return 0
 
-    # Generate embeddings for all chunks
-    contents = [c["content"] for c in chunks]
-    embeddings = embed_texts(contents)
-
+    embeddings = embed_texts([chunk["content"] for chunk in chunks])
     stored = 0
-    for i, chunk in enumerate(chunks):
+    for idx, chunk in enumerate(chunks):
         db_chunk = HGDocumentChunk(
             document_id=document_id,
             chunk_index=chunk["chunk_index"],
             page=page,
             content=chunk["content"],
-            token_count=len(chunk["content"].split()),  # rough token estimate
+            token_count=len(chunk["content"].split()),
         )
-
-        # Set embedding if available
-        if embeddings and i < len(embeddings):
-            if HAS_PGVECTOR:
-                # Store in the pgvector column
-                db_chunk.embedding = embeddings[i]  # type: ignore
-            else:
-                # Store as JSON list (fallback)
-                db_chunk.embedding = embeddings[i]
+        if HAS_PGVECTOR and idx < len(embeddings) and hasattr(db_chunk, "embedding_vec"):
+            db_chunk.embedding_vec = embeddings[idx]
 
         session.add(db_chunk)
         stored += 1
@@ -161,108 +104,78 @@ async def store_document_chunks(
     return stored
 
 
-# ── Similarity search ───────────────────────────────────────────────
-
-
-async def search_similar_chunks(
-    session: Any,
+def search_similar_chunks(
+    *,
+    session: Session,
     query: str,
-    user_id: uuid.UUID | None = None,
-    doc_ids: list[str] | None = None,
+    user_id: uuid.UUID,
+    doc_ids: list[uuid.UUID] | None = None,
     top_k: int = 5,
 ) -> list[dict[str, Any]]:
-    """Find the most similar document chunks to a query.
+    from app.housing_grant_db_models import HAS_PGVECTOR, HGDocument, HGDocumentChunk
 
-    Uses pgvector cosine distance when available.
-    Falls back to returning recent chunks if pgvector is not installed.
-    """
-    from app.housing_grant_db_models import HGDocumentChunk, HGDocument, HAS_PGVECTOR
+    query_vector = embed_single(query)
 
-    # Generate query embedding
-    query_embedding = embed_single(query)
-
-    if HAS_PGVECTOR and query_embedding:
+    if HAS_PGVECTOR and query_vector is not None:
         try:
-            from sqlalchemy import select, func
-
-            # Build query with cosine distance
             stmt = (
-                select(
-                    HGDocumentChunk,
-                    HGDocument.filename,
-                    HGDocument.doc_type,
-                )
-                .join(HGDocument, HGDocumentChunk.document_id == HGDocument.id)
+                select(HGDocumentChunk, HGDocument)
+                .join(HGDocument, col(HGDocumentChunk.document_id) == col(HGDocument.id))
+                .where(col(HGDocument.user_id) == user_id)
             )
-
-            if user_id:
-                stmt = stmt.where(HGDocument.user_id == user_id)
-
             if doc_ids:
-                stmt = stmt.where(HGDocument.id.in_(doc_ids))  # type: ignore
+                stmt = stmt.where(col(HGDocument.id).in_(doc_ids))
 
-            # Order by cosine distance (closest first)
-            stmt = stmt.order_by(
-                HGDocumentChunk.__table__.c.embedding_vec.cosine_distance(query_embedding)
-            ).limit(top_k)
+            embedding_column = getattr(HGDocumentChunk, "embedding_vec", None)
+            if embedding_column is None:
+                raise RuntimeError("pgvector column not available")
 
+            stmt = stmt.order_by(embedding_column.cosine_distance(query_vector)).limit(top_k)
             results = session.exec(stmt).all()
 
             return [
                 {
+                    "doc_id": str(doc.id),
                     "chunk_id": str(chunk.id),
-                    "doc": filename,
-                    "docType": doc_type,
+                    "doc": doc.filename,
+                    "docType": doc.doc_type,
                     "page": str(chunk.page or "1"),
                     "chunk": f"chk_{chunk.chunk_index:05d}",
-                    "quote": chunk.content[:200],  # Truncate for safety
-                    "score": 0.0,  # Would need to compute distance separately
+                    "quote": chunk.content[:240],
+                    "score": 0.0,
                 }
-                for chunk, filename, doc_type in results
+                for chunk, doc in results
             ]
-        except Exception as e:
-            logger.error("Vector search failed: %s", e)
+        except Exception as exc:
+            logger.warning("Vector search failed, falling back to recency: %s", exc)
 
-    # Fallback: return recent chunks without vector ranking
-    try:
-        from sqlalchemy import select
+    stmt = (
+        select(HGDocumentChunk, HGDocument)
+        .join(HGDocument, col(HGDocumentChunk.document_id) == col(HGDocument.id))
+        .where(col(HGDocument.user_id) == user_id)
+    )
+    if doc_ids:
+        stmt = stmt.where(col(HGDocument.id).in_(doc_ids))
 
-        stmt = (
-            select(HGDocumentChunk, HGDocument.filename, HGDocument.doc_type)
-            .join(HGDocument, HGDocumentChunk.document_id == HGDocument.id)
-        )
+    stmt = stmt.order_by(col(HGDocumentChunk.created_at).desc()).limit(top_k)
+    results = session.exec(stmt).all()
 
-        if user_id:
-            stmt = stmt.where(HGDocument.user_id == user_id)
-
-        stmt = stmt.order_by(HGDocumentChunk.created_at.desc()).limit(top_k)  # type: ignore
-        results = session.exec(stmt).all()
-
-        return [
-            {
-                "chunk_id": str(chunk.id),
-                "doc": filename,
-                "docType": doc_type,
-                "page": str(chunk.page or "1"),
-                "chunk": f"chk_{chunk.chunk_index:05d}",
-                "quote": chunk.content[:200],
-                "score": 0.0,
-            }
-            for chunk, filename, doc_type in results
-        ]
-    except Exception as e:
-        logger.warning("Chunk retrieval failed: %s", e)
-        return []
-
-
-# ── Utility ─────────────────────────────────────────────────────────
+    return [
+        {
+            "doc_id": str(doc.id),
+            "chunk_id": str(chunk.id),
+            "doc": doc.filename,
+            "docType": doc.doc_type,
+            "page": str(chunk.page or "1"),
+            "chunk": f"chk_{chunk.chunk_index:05d}",
+            "quote": chunk.content[:240],
+            "score": 0.0,
+        }
+        for chunk, doc in results
+    ]
 
 
 def is_vector_store_available() -> bool:
-    """Check if the vector store is fully functional."""
-    try:
-        from app.housing_grant_db_models import HAS_PGVECTOR
-        model = _get_embedding_model()
-        return HAS_PGVECTOR and model is not None
-    except Exception:
-        return False
+    from app.housing_grant_db_models import HAS_PGVECTOR
+
+    return HAS_PGVECTOR and _get_embedding_model() is not None
