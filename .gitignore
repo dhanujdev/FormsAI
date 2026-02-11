@@ -1,0 +1,28 @@
+# General
+.DS_Store
+.env
+.venv
+example.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# IDE
+.vscode/
+.idea/
+
+# Backend specific
+backend/.env
+backend/.copier-answers.yml
+
+# Frontend specific
+frontend/.env
+frontend/dist/
+coverage/

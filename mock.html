@@ -1,0 +1,1567 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Housing Grant Form AI Copilot (Mock)</title>
+    <style>
+        :root {
+            --bg: #0b1020;
+            --panel: #121a33;
+            --panel2: #0f1630;
+            --card: #0f1733;
+            --muted: #9aa6c2;
+            --text: #e9eefc;
+            --border: rgba(255, 255, 255, .08);
+            --accent: #6ee7ff;
+            --good: #2ee59d;
+            --warn: #ffcf5a;
+            --bad: #ff6b6b;
+            --chip: #1a2650;
+            --shadow: 0 18px 50px rgba(0, 0, 0, .35);
+            --radius: 14px;
+            --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        html,
+        body {
+            height: 100%
+        }
+
+        body {
+            margin: 0;
+            background: radial-gradient(1200px 700px at 15% 0%, rgba(110, 231, 255, .15), transparent 60%),
+                radial-gradient(900px 600px at 95% 10%, rgba(46, 229, 157, .12), transparent 55%),
+                var(--bg);
+            color: var(--text);
+            font-family: var(--sans);
+            letter-spacing: .2px;
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none
+        }
+
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            background: rgba(11, 16, 32, .82);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .topbar-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .brand {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            font-weight: 650;
+        }
+
+        .logo {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, rgba(110, 231, 255, .9), rgba(46, 229, 157, .9));
+            box-shadow: 0 10px 30px rgba(110, 231, 255, .18);
+        }
+
+        .sub {
+            color: var(--muted);
+            font-weight: 500;
+            font-size: 12px;
+        }
+
+        .env {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .pill {
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, .03);
+        }
+
+        .pill strong {
+            color: var(--text)
+        }
+
+        .main {
+            max-width: 1400px;
+            margin: 18px auto 40px;
+            padding: 0 18px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 330px 1fr 380px;
+            gap: 16px;
+            align-items: start;
+        }
+
+        .panel {
+            background: linear-gradient(180deg, rgba(255, 255, 255, .03), transparent 32%), var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .panel h2 {
+            margin: 0;
+            padding: 14px 14px 10px;
+            font-size: 14px;
+            letter-spacing: .3px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .panel h2 small {
+            color: var(--muted);
+            font-weight: 500
+        }
+
+        .panel-body {
+            padding: 14px
+        }
+
+        .hint {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.35
+        }
+
+        .btnrow {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px
+        }
+
+        button {
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, .04);
+            color: var(--text);
+            border-radius: 12px;
+            padding: 10px 12px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        button:hover {
+            border-color: rgba(110, 231, 255, .4)
+        }
+
+        button.primary {
+            background: linear-gradient(135deg, rgba(110, 231, 255, .18), rgba(46, 229, 157, .18));
+            border-color: rgba(110, 231, 255, .28);
+        }
+
+        button.danger {
+            background: rgba(255, 107, 107, .08);
+            border-color: rgba(255, 107, 107, .25);
+        }
+
+        button.ghost {
+            background: transparent;
+        }
+
+        .drop {
+            border: 1px dashed rgba(110, 231, 255, .35);
+            background: rgba(110, 231, 255, .06);
+            border-radius: 14px;
+            padding: 14px;
+            margin-top: 10px;
+        }
+
+        .drop label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        .drop input {
+            display: none
+        }
+
+        .docs {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .doc {
+            border: 1px solid var(--border);
+            background: rgba(0, 0, 0, .12);
+            border-radius: 14px;
+            padding: 10px 10px;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .doc .meta {
+            min-width: 0
+        }
+
+        .doc .name {
+            font-weight: 650;
+            font-size: 13px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .doc .small {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 4px
+        }
+
+        .badge {
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            border: 1px solid var(--border);
+            height: fit-content;
+            white-space: nowrap;
+        }
+
+        .b-good {
+            background: rgba(46, 229, 157, .10);
+            border-color: rgba(46, 229, 157, .25)
+        }
+
+        .b-warn {
+            background: rgba(255, 207, 90, .10);
+            border-color: rgba(255, 207, 90, .28)
+        }
+
+        .b-bad {
+            background: rgba(255, 107, 107, .10);
+            border-color: rgba(255, 107, 107, .26)
+        }
+
+        .b-info {
+            background: rgba(110, 231, 255, .10);
+            border-color: rgba(110, 231, 255, .26)
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, .04);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 6px 10px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .chip strong {
+            color: var(--text)
+        }
+
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 12px 0
+        }
+
+        .form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .field {
+            border: 1px solid var(--border);
+            background: rgba(0, 0, 0, .10);
+            border-radius: 14px;
+            padding: 12px;
+        }
+
+        .field-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .field label {
+            font-size: 12px;
+            color: var(--muted);
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .field input,
+        .field textarea,
+        .field select {
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, .10);
+            background: rgba(255, 255, 255, .03);
+            color: var(--text);
+            border-radius: 12px;
+            padding: 10px 10px;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .field textarea {
+            min-height: 80px;
+            resize: vertical
+        }
+
+        .field input:focus,
+        .field textarea:focus,
+        .field select:focus {
+            border-color: rgba(110, 231, 255, .45);
+            box-shadow: 0 0 0 3px rgba(110, 231, 255, .12);
+        }
+
+        .field-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .mini {
+            padding: 8px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .mini.secondary {
+            background: rgba(255, 255, 255, .03)
+        }
+
+        .conf {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .conf .meter {
+            width: 140px;
+            height: 8px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, .07);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, .06);
+        }
+
+        .conf .bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, rgba(255, 207, 90, .9), rgba(46, 229, 157, .95));
+        }
+
+        .conf small {
+            color: var(--muted)
+        }
+
+        .citations {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .cite {
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, .02);
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .cite .left {
+            min-width: 0;
+        }
+
+        .cite .title {
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .cite .snip {
+            margin-top: 4px;
+            font-size: 12px;
+            color: var(--muted);
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .audit-summary {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .kpi {
+            border: 1px solid var(--border);
+            background: rgba(0, 0, 0, .12);
+            border-radius: 14px;
+            padding: 10px;
+        }
+
+        .kpi .num {
+            font-weight: 900;
+            font-size: 20px;
+            margin-top: 2px
+        }
+
+        .kpi .lbl {
+            color: var(--muted);
+            font-size: 12px
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin: 8px 0 12px;
+        }
+
+        .tab {
+            padding: 8px 10px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, .03);
+            font-size: 12px;
+            font-weight: 750;
+            color: var(--muted);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .tab.active {
+            background: rgba(110, 231, 255, .10);
+            border-color: rgba(110, 231, 255, .25);
+            color: var(--text);
+        }
+
+        .flag {
+            border: 1px solid var(--border);
+            background: rgba(0, 0, 0, .12);
+            border-radius: 14px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .flag-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .flag .code {
+            font-family: var(--mono);
+            color: var(--muted);
+            font-size: 11px;
+        }
+
+        .flag .msg {
+            margin-top: 6px;
+            font-size: 12px;
+            color: var(--muted);
+            line-height: 1.35;
+        }
+
+        .flag .fix {
+            margin-top: 8px;
+            font-size: 12px;
+        }
+
+        .toast {
+            position: fixed;
+            right: 16px;
+            bottom: 16px;
+            background: rgba(0, 0, 0, .55);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 12px;
+            border-radius: 14px;
+            box-shadow: var(--shadow);
+            max-width: 360px;
+            display: none;
+            z-index: 50;
+        }
+
+        .toast .t {
+            font-weight: 800
+        }
+
+        .toast .d {
+            color: var(--muted);
+            font-size: 12px;
+            margin-top: 4px
+        }
+
+        /* modal */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .55);
+            display: none;
+            z-index: 40;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+        }
+
+        .modal {
+            width: min(860px, 100%);
+            border-radius: 16px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, .04), transparent 30%), var(--panel2);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .modal-head {
+            padding: 14px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .modal-head .title {
+            font-weight: 850
+        }
+
+        .modal-body {
+            padding: 14px;
+            max-height: 70vh;
+            overflow: auto;
+        }
+
+        .mono {
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--muted);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .two {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .note {
+            padding: 10px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 207, 90, .25);
+            background: rgba(255, 207, 90, .08);
+            color: var(--text);
+            font-size: 12px;
+            line-height: 1.35;
+        }
+
+        .foot {
+            color: var(--muted);
+            font-size: 12px;
+            margin-top: 12px;
+            line-height: 1.35;
+        }
+
+        @media (max-width: 1200px) {
+            .grid {
+                grid-template-columns: 330px 1fr
+            }
+
+            .panel.audit {
+                grid-column: 1 / -1
+            }
+        }
+
+        @media (max-width: 860px) {
+            .grid {
+                grid-template-columns: 1fr
+            }
+
+            .panel.audit {
+                grid-column: auto
+            }
+
+            .two {
+                grid-template-columns: 1fr
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="topbar">
+        <div class="topbar-inner">
+            <div class="brand">
+                <div class="logo"></div>
+                <div>
+                    <div>Form AI Copilot <span class="sub">— Housing Grant + Reasonable Accommodation</span></div>
+                    <div class="sub">Mock UI (no backend). Built for a weekend MVP with strong security defaults.</div>
+                </div>
+            </div>
+            <div class="env">
+                <span class="pill">UI: <strong>Static HTML</strong></span>
+                <span class="pill">Backend: <strong>FastAPI</strong> (planned)</span>
+                <span class="pill">LLM: <strong>Claude</strong> (planned)</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="grid">
+            <!-- Docs -->
+            <section class="panel">
+                <h2>
+                    <span>Documents</span>
+                    <small id="docCount">0 uploaded</small>
+                </h2>
+                <div class="panel-body">
+                    <div class="hint">
+                        Upload paystubs, lease, utility bill, and (optional) provider letter. In the real app, uploads
+                        go via signed URLs to object storage and ingestion runs OCR + chunking.
+                    </div>
+
+                    <div class="drop">
+                        <label>
+                            <div>
+                                <div style="font-weight:800">Drop files here</div>
+                                <div class="sub">or click to choose (PDF, JPG, PNG)</div>
+                            </div>
+                            <div class="chip"><strong>Mock</strong> ingestion</div>
+                            <input id="fileInput" type="file" multiple />
+                        </label>
+                    </div>
+
+                    <div class="btnrow">
+                        <button class="primary" id="btnAddSample">Add sample docs</button>
+                        <button class="ghost" id="btnClearDocs">Clear</button>
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <div class="hint">
+                        Security posture (demo): we avoid showing raw doc text and keep evidence snippets small.
+                    </div>
+
+                    <div class="docs" id="docsList"></div>
+
+                    <div class="foot">
+                        <span class="chip"><strong>Planned</strong> Workspace isolation</span>
+                        <span class="chip"><strong>Planned</strong> PII redaction</span>
+                        <span class="chip"><strong>Planned</strong> Prompt injection defense</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Form -->
+            <section class="panel">
+                <h2>
+                    <span>Application Form</span>
+                    <small><span id="filledCount">0</span>/15 filled</small>
+                </h2>
+                <div class="panel-body">
+                    <div class="note" id="sensitiveBanner" style="display:none;">
+                        <strong>⚠ Sensitive data detected.</strong>
+                        This mock UI detected patterns that look like secrets/credentials/SSN. In production, these
+                        would be blocked/redacted before any LLM call and never logged.
+                    </div>
+
+                    <div class="hint">
+                        Use <strong>Suggest</strong> to fill from evidence (mock). In production, each Suggest triggers
+                        retrieval (RAG) and returns citations + confidence.
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <div class="form" id="form"></div>
+
+                    <div class="divider"></div>
+
+                    <div class="btnrow">
+                        <button class="primary" id="btnPreview">Preview Audit</button>
+                        <button id="btnSuggestAll">Suggest all (mock)</button>
+                        <button class="ghost" id="btnResetForm">Reset form</button>
+                    </div>
+
+                    <div class="foot">
+                        <div class="chip"><strong>Planned</strong> Server-side validation</div>
+                        <div class="chip"><strong>Planned</strong> Evidence-required fields</div>
+                        <div class="chip"><strong>Planned</strong> One-call batched audit</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Audit -->
+            <section class="panel audit">
+                <h2>
+                    <span>Preview Audit</span>
+                    <small id="auditStatus">Not run</small>
+                </h2>
+                <div class="panel-body">
+                    <div class="hint">
+                        The audit checks required fields, formats, internal consistency, and whether key claims are
+                        supported by uploaded documents.
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <div class="audit-summary">
+                        <div class="kpi">
+                            <div class="lbl">Risk score</div>
+                            <div class="num" id="riskScore">—</div>
+                        </div>
+                        <div class="kpi">
+                            <div class="lbl">Evidence coverage</div>
+                            <div class="num" id="evidenceCoverage">—</div>
+                        </div>
+                        <div class="kpi">
+                            <div class="lbl">Blockers</div>
+                            <div class="num" id="kpiBlockers">—</div>
+                        </div>
+                        <div class="kpi">
+                            <div class="lbl">Warnings</div>
+                            <div class="num" id="kpiWarnings">—</div>
+                        </div>
+                    </div>
+
+                    <div class="tabs">
+                        <div class="tab active" data-tab="blocker">Blockers</div>
+                        <div class="tab" data-tab="warning">Warnings</div>
+                        <div class="tab" data-tab="info">Info</div>
+                    </div>
+
+                    <div id="flags"></div>
+
+                    <div class="foot">
+                        <strong>Demo notes:</strong> in production we would store the audit report (redacted) and
+                        include doc/chunk references for each grounded field.
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Evidence Modal -->
+    <div class="modal-backdrop" id="modalBackdrop" aria-hidden="true">
+        <div class="modal" role="dialog" aria-modal="true" aria-label="Evidence">
+            <div class="modal-head">
+                <div>
+                    <div class="title" id="modalTitle">Evidence</div>
+                    <div class="sub" id="modalSub">Citations & snippets (mock)</div>
+                </div>
+                <div class="btnrow">
+                    <button class="ghost" id="btnCopyJSON">Copy JSON</button>
+                    <button class="danger" id="btnCloseModal">Close</button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="two">
+                    <div>
+                        <div class="chip"><strong>Field</strong> <span id="modalField">—</span></div>
+                        <div style="height:10px"></div>
+                        <div class="hint">Suggested value</div>
+                        <div style="font-weight:900; margin-top:6px" id="modalValue">—</div>
+                        <div style="height:10px"></div>
+                        <div class="hint">Rationale</div>
+                        <div style="margin-top:6px; color:var(--muted); font-size:12px; line-height:1.4"
+                            id="modalRationale">—</div>
+                    </div>
+                    <div>
+                        <div class="hint">Raw payload (what backend would return)</div>
+                        <div class="divider"></div>
+                        <div class="mono" id="modalJSON"></div>
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+                <div class="hint">Citations</div>
+                <div id="modalCitations" class="citations"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">
+        <div class="t" id="toastTitle"></div>
+        <div class="d" id="toastDesc"></div>
+    </div>
+
+    <script>
+        // ----------------------------
+        // Mock data + schema
+        // ----------------------------
+        const DOC_TYPES = ["paystub", "lease", "utility_bill", "provider_letter", "income_verification", "other"];
+
+        const formSchema = [
+            { id: "full_name", label: "Full legal name", type: "text", required: true, evidence: false },
+            { id: "dob", label: "Date of birth", type: "date", required: true, evidence: false },
+            { id: "phone", label: "Phone number", type: "text", required: true, evidence: false },
+            { id: "email", label: "Email", type: "email", required: true, evidence: false, verifier: "domain_check" },
+            { id: "address_line1", label: "Street address", type: "text", required: true, evidence: true, docTypes: ["lease", "utility_bill"], verifier: "address_normalize" },
+            { id: "city", label: "City", type: "text", required: true, evidence: true, docTypes: ["lease", "utility_bill"], verifier: "address_normalize" },
+            { id: "state", label: "State (2-letter)", type: "text", required: true, evidence: true, docTypes: ["lease", "utility_bill"], verifier: "address_normalize" },
+            { id: "zip", label: "ZIP code", type: "text", required: true, evidence: true, docTypes: ["lease", "utility_bill"], verifier: "address_normalize" },
+            { id: "household_size", label: "Household size", type: "number", required: true, evidence: false },
+            { id: "landlord_name", label: "Landlord name", type: "text", required: true, evidence: true, docTypes: ["lease", "landlord_letter"] },
+            { id: "landlord_contact", label: "Landlord contact (phone/email)", type: "text", required: true, evidence: true, docTypes: ["lease", "landlord_letter"], verifier: "domain_check" },
+            { id: "monthly_rent", label: "Monthly rent (USD)", type: "text", required: true, evidence: true, docTypes: ["lease", "rent_ledger"] },
+            { id: "employer_name", label: "Employer name (if employed)", type: "text", required: false, evidence: true, docTypes: ["paystub", "income_verification"] },
+            { id: "monthly_gross_income", label: "Monthly gross income (USD)", type: "text", required: true, evidence: true, docTypes: ["paystub", "income_verification"] },
+            { id: "requested_accommodation", label: "Requested accommodation (describe)", type: "textarea", required: true, evidence: true, docTypes: ["provider_letter"] },
+        ];
+
+        // suggestions map (what the mock "AI" returns)
+        const mockSuggestions = {
+            full_name: {
+                value: "Jane Doe",
+                confidence: 0.62,
+                rationale: "Name appears on the lease header.",
+                citations: [{ doc: "Lease_Apt12.pdf", docType: "lease", page: "1", chunk: "chk_00003", quote: "Tenant: Jane Doe" }],
+                model: "claude-haiku (mock)"
+            },
+            dob: {
+                value: "1990-05-02",
+                confidence: 0.38,
+                rationale: "DOB not clearly present in uploaded docs. Please confirm manually.",
+                citations: [],
+                flags: [{ code: "MISSING_EVIDENCE", severity: "warning", message: "DOB not found in documents." }],
+                model: "claude-sonnet (mock)"
+            },
+            phone: {
+                value: "+1 (555) 013-2207",
+                confidence: 0.55,
+                rationale: "Phone listed on applicant contact page in utility bill statement.",
+                citations: [{ doc: "Utility_Bill_Jan.pdf", docType: "utility_bill", page: "1", chunk: "chk_00011", quote: "Contact: (555) 013-2207" }],
+                model: "claude-haiku (mock)"
+            },
+            email: {
+                value: "jane.doe@example.com",
+                confidence: 0.45,
+                rationale: "Email not reliably found; using user-provided default format.",
+                citations: [],
+                flags: [{ code: "LOW_CONFIDENCE", severity: "info", message: "Confirm email manually." }],
+                model: "claude-sonnet (mock)"
+            },
+            address_line1: {
+                value: "12 Main St Apt 12",
+                confidence: 0.86,
+                rationale: "Address appears on lease and utility bill; consistent across docs.",
+                citations: [
+                    { doc: "Lease_Apt12.pdf", docType: "lease", page: "1", chunk: "chk_00002", quote: "Premises: 12 Main St Apt 12" },
+                    { doc: "Utility_Bill_Jan.pdf", docType: "utility_bill", page: "1", chunk: "chk_00010", quote: "Service Address: 12 Main St Apt 12" }
+                ],
+                model: "claude-sonnet (mock)"
+            },
+            city: {
+                value: "Albany",
+                confidence: 0.82,
+                rationale: "City appears with address line on lease.",
+                citations: [{ doc: "Lease_Apt12.pdf", docType: "lease", page: "1", chunk: "chk_00002", quote: "Albany, NY 12207" }],
+                model: "claude-haiku (mock)"
+            },
+            state: {
+                value: "NY",
+                confidence: 0.92,
+                rationale: "State code appears on lease and bill.",
+                citations: [{ doc: "Lease_Apt12.pdf", docType: "lease", page: "1", chunk: "chk_00002", quote: "Albany, NY 12207" }],
+                model: "claude-haiku (mock)"
+            },
+            zip: {
+                value: "12207",
+                confidence: 0.90,
+                rationale: "ZIP appears on lease and bill.",
+                citations: [{ doc: "Utility_Bill_Jan.pdf", docType: "utility_bill", page: "1", chunk: "chk_00010", quote: "Albany, NY 12207" }],
+                model: "claude-haiku (mock)"
+            },
+            household_size: {
+                value: "2",
+                confidence: 0.40,
+                rationale: "Household size not evidenced; set to 2 as a placeholder.",
+                citations: [],
+                flags: [{ code: "USER_CONFIRM", severity: "info", message: "Confirm household size manually." }],
+                model: "claude-haiku (mock)"
+            },
+            landlord_name: {
+                value: "Greenview Properties LLC",
+                confidence: 0.78,
+                rationale: "Landlord name found in lease signature section.",
+                citations: [{ doc: "Lease_Apt12.pdf", docType: "lease", page: "3", chunk: "chk_00007", quote: "Landlord: Greenview Properties LLC" }],
+                model: "claude-sonnet (mock)"
+            },
+            landlord_contact: {
+                value: "leasing@greenview.example",
+                confidence: 0.54,
+                rationale: "Contact email extracted from lease footer; verify domain.",
+                citations: [{ doc: "Lease_Apt12.pdf", docType: "lease", page: "3", chunk: "chk_00008", quote: "Contact: leasing@greenview.example" }],
+                flags: [{ code: "DOMAIN_UNVERIFIED", severity: "warning", message: "Email domain may not resolve. Confirm contact." }],
+                model: "claude-sonnet (mock)"
+            },
+            monthly_rent: {
+                value: "$1,650",
+                confidence: 0.70,
+                rationale: "Monthly rent stated in lease; ensure it matches most recent ledger if available.",
+                citations: [{ doc: "Lease_Apt12.pdf", docType: "lease", page: "2", chunk: "chk_00005", quote: "Monthly Rent: $1,650.00" }],
+                model: "claude-sonnet (mock)"
+            },
+            employer_name: {
+                value: "ACME Logistics",
+                confidence: 0.68,
+                rationale: "Employer name appears on most recent paystub header.",
+                citations: [{ doc: "Paystub_2026-01-15.pdf", docType: "paystub", page: "1", chunk: "chk_00021", quote: "Employer: ACME Logistics" }],
+                model: "claude-haiku (mock)"
+            },
+            monthly_gross_income: {
+                value: "$4,320",
+                confidence: 0.76,
+                rationale: "Gross pay on biweekly stub ($2,160) × 2.0–2.2 ≈ monthly estimate. Confirm pay frequency.",
+                citations: [{ doc: "Paystub_2026-01-15.pdf", docType: "paystub", page: "1", chunk: "chk_00022", quote: "Gross Pay: 2160.00 | Pay Period: 01/01 - 01/15" }],
+                flags: [{ code: "ESTIMATED", severity: "info", message: "Monthly income is derived from pay frequency." }],
+                model: "claude-sonnet (mock)"
+            },
+            requested_accommodation: {
+                value: "Request transfer to an accessible, ground-floor unit (or elevator access) due to a mobility-related limitation that makes stair use unsafe.",
+                confidence: 0.74,
+                rationale: "Provider letter supports mobility limitation and need for stair-free access.",
+                citations: [{ doc: "Provider_Letter.pdf", docType: "provider_letter", page: "1", chunk: "chk_00031", quote: "Patient requires stair-free access due to mobility impairment." }],
+                model: "claude-opus (mock)"
+            }
+        };
+
+        // Mock docs
+        const sampleDocs = [
+            { name: "Paystub_2026-01-15.pdf", docType: "paystub", status: "Ready", badge: "b-good", pages: 1 },
+            { name: "Lease_Apt12.pdf", docType: "lease", status: "Ready", badge: "b-good", pages: 3 },
+            { name: "Utility_Bill_Jan.pdf", docType: "utility_bill", status: "Ready", badge: "b-good", pages: 1 },
+            { name: "Provider_Letter.pdf", docType: "provider_letter", status: "Ready", badge: "b-good", pages: 1 },
+        ];
+
+        // state
+        const state = {
+            docs: [],
+            form: {},
+            fieldMeta: {}, // store last suggestion payload per field
+            audit: { last: null, activeTab: "blocker" }
+        };
+
+        // ----------------------------
+        // Helpers
+        // ----------------------------
+        const $ = (sel) => document.querySelector(sel);
+        const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+        function toast(title, desc) {
+            $("#toastTitle").textContent = title;
+            $("#toastDesc").textContent = desc || "";
+            const el = $("#toast");
+            el.style.display = "block";
+            clearTimeout(el._t);
+            el._t = setTimeout(() => el.style.display = "none", 2600);
+        }
+
+        function setDocCount() {
+            $("#docCount").textContent = `${state.docs.length} uploaded`;
+        }
+
+        function renderDocs() {
+            const wrap = $("#docsList");
+            wrap.innerHTML = "";
+            if (state.docs.length === 0) {
+                wrap.innerHTML = `<div class="hint">No documents yet. Add sample docs to demo the flow.</div>`;
+                return;
+            }
+            state.docs.forEach((d, idx) => {
+                const el = document.createElement("div");
+                el.className = "doc";
+                el.innerHTML = `
+        <div class="meta">
+          <div class="name" title="${d.name}">${d.name}</div>
+          <div class="small">${d.docType} · ${d.pages || "?"} page(s)</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end">
+          <span class="badge ${d.badge}">${d.status}</span>
+          <button class="mini secondary" data-doc-view="${idx}">View meta</button>
+        </div>
+      `;
+                wrap.appendChild(el);
+            });
+
+            $$("[data-doc-view]").forEach(btn => {
+                btn.onclick = () => {
+                    const i = Number(btn.getAttribute("data-doc-view"));
+                    const d = state.docs[i];
+                    openModal({
+                        fieldId: "document_meta",
+                        value: d.name,
+                        rationale: "Document metadata (mock). In production this would show doc_type, ingestion status, page count, and safe extracted signals—not raw text.",
+                        citations: [],
+                        json: {
+                            doc_id: `doc_${String(i).padStart(3, "0")}`,
+                            filename: d.name,
+                            doc_type: d.docType,
+                            status: d.status.toLowerCase(),
+                            pages: d.pages || null,
+                            storage: { provider: "gcs", path: `gs://bucket/ws_123/user_456/${d.name}` }
+                        }
+                    });
+                };
+            });
+        }
+
+        function renderForm() {
+            const wrap = $("#form");
+            wrap.innerHTML = "";
+            formSchema.forEach(f => {
+                const fieldEl = document.createElement("div");
+                fieldEl.className = "field";
+                const current = state.form[f.id] ?? "";
+                const meta = state.fieldMeta[f.id];
+                const confPct = meta ? Math.round((meta.confidence || 0) * 100) : 0;
+
+                const inputHtml = (f.type === "textarea")
+                    ? `<textarea id="in_${f.id}" placeholder="Type here...">${escapeHtml(current)}</textarea>`
+                    : (f.type === "number")
+                        ? `<input id="in_${f.id}" type="number" value="${escapeAttr(current)}" placeholder="Enter a number" />`
+                        : `<input id="in_${f.id}" type="${f.type}" value="${escapeAttr(current)}" placeholder="Type here..." />`;
+
+                fieldEl.innerHTML = `
+        <div class="field-top">
+          <div style="flex:1; min-width:0">
+            <label>
+              ${f.label}
+              ${f.required ? `<span class="badge b-bad" style="margin-left:8px">Required</span>` : `<span class="badge b-info" style="margin-left:8px">Optional</span>`}
+              ${f.evidence ? `<span class="badge b-warn" style="margin-left:8px">Evidence</span>` : ``}
+            </label>
+            ${inputHtml}
+            <div class="conf">
+              <span class="chip"><strong>Confidence</strong> ${meta ? (meta.confidenceLabel || labelConfidence(meta.confidence)) : "—"}</span>
+              <div class="meter" title="mock confidence">
+                <div class="bar" style="width:${confPct}%;"></div>
+              </div>
+              <small>${meta ? `${confPct}% · ${meta.model || "mock"}` : "No suggestion yet"}</small>
+            </div>
+
+            ${meta ? renderCitationsInline(meta.citations || [], f.id) : `<div class="hint" style="margin-top:10px">Click Suggest to generate grounded value + citations.</div>`}
+          </div>
+
+          <div class="field-actions">
+            <button class="mini primary" data-suggest="${f.id}">Suggest</button>
+            <button class="mini" data-evidence="${f.id}" ${meta ? "" : "disabled"}>Evidence</button>
+          </div>
+        </div>
+      `;
+                wrap.appendChild(fieldEl);
+            });
+
+            // wire inputs
+            formSchema.forEach(f => {
+                const inp = $(`#in_${f.id}`);
+                if (!inp) return;
+                inp.addEventListener("input", (e) => {
+                    state.form[f.id] = e.target.value;
+                    scanSensitive();
+                    updateFilledCount();
+                });
+            });
+
+            // wire buttons
+            $$("[data-suggest]").forEach(btn => {
+                btn.onclick = () => suggestField(btn.getAttribute("data-suggest"));
+            });
+            $$("[data-evidence]").forEach(btn => {
+                btn.onclick = () => showEvidence(btn.getAttribute("data-evidence"));
+            });
+
+            updateFilledCount();
+        }
+
+        function renderCitationsInline(citations, fieldId) {
+            if (!citations || citations.length === 0) {
+                return `<div class="hint" style="margin-top:10px">No citations found. This should trigger a Missing Evidence flag in production.</div>`;
+            }
+            const items = citations.slice(0, 2).map((c, idx) => `
+      <div class="cite">
+        <div class="left">
+          <div class="title">${c.doc} · p.${c.page} · ${c.chunk}</div>
+          <div class="snip">${escapeHtml(c.quote)}</div>
+        </div>
+        <div>
+          <button class="mini secondary" onclick="window.__openEvidence('${fieldId}', ${idx})">View</button>
+        </div>
+      </div>
+    `).join("");
+            return `<div class="citations">${items}</div>`;
+        }
+
+        // small helper for inline onclick
+        window.__openEvidence = (fieldId, idx) => {
+            const meta = state.fieldMeta[fieldId];
+            if (!meta) return;
+            openModal({
+                fieldId,
+                value: state.form[fieldId] ?? "",
+                rationale: meta.rationale || "—",
+                citations: meta.citations || [],
+                json: meta
+            });
+        };
+
+        function updateFilledCount() {
+            const filled = formSchema.filter(f => (state.form[f.id] ?? "").toString().trim().length > 0).length;
+            $("#filledCount").textContent = String(filled);
+        }
+
+        function escapeHtml(s) {
+            return String(s || "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+        }
+        function escapeAttr(s) {
+            return String(s || "").replaceAll('"', "&quot;");
+        }
+
+        function labelConfidence(c) {
+            if (c >= 0.8) return "High";
+            if (c >= 0.55) return "Medium";
+            if (c > 0) return "Low";
+            return "—";
+        }
+
+        function scanSensitive() {
+            const joined = Object.values(state.form).join(" ");
+            const patterns = [
+                /AKIA[0-9A-Z]{16}/,                // AWS access key-ish
+                /sk-[A-Za-z0-9]{20,}/,            // OpenAI-ish
+                /password\s*=/i,
+                /apikey\s*=/i,
+                /\b\d{3}-\d{2}-\d{4}\b/,          // SSN
+                /\b(?:\d[ -]*?){13,16}\b/         // card-like
+            ];
+            const hit = patterns.some(re => re.test(joined));
+            $("#sensitiveBanner").style.display = hit ? "block" : "none";
+        }
+
+        function hasDocType(type) {
+            return state.docs.some(d => d.docType === type);
+        }
+
+        // ----------------------------
+        // Mock actions
+        // ----------------------------
+        function addSampleDocs() {
+            state.docs = JSON.parse(JSON.stringify(sampleDocs));
+            setDocCount();
+            renderDocs();
+            toast("Sample docs added", "Lease, paystub, utility bill, provider letter (mock).");
+        }
+
+        function clearDocs() {
+            state.docs = [];
+            setDocCount();
+            renderDocs();
+            toast("Cleared documents", "Upload or add sample docs to continue.");
+        }
+
+        function suggestField(fieldId) {
+            // simulate: missing docs -> lower confidence + missing evidence
+            const suggestionBase = mockSuggestions[fieldId];
+            const field = formSchema.find(f => f.id === fieldId);
+            if (!field) return;
+
+            // Create a payload like backend would return
+            let payload = suggestionBase ? JSON.parse(JSON.stringify(suggestionBase)) : null;
+
+            if (!payload) {
+                payload = {
+                    value: "",
+                    confidence: 0.0,
+                    rationale: "No mock suggestion configured.",
+                    citations: [],
+                    flags: [{ code: "NO_SUGGESTION", severity: "warning", message: "No suggestion available." }],
+                    model: "mock"
+                };
+            }
+
+            // If evidence required but we don't have matching docs, degrade
+            if (field.evidence) {
+                const priorities = field.docTypes || [];
+                const ok = priorities.length ? priorities.some(t => hasDocType(t)) : state.docs.length > 0;
+                if (!ok) {
+                    payload.confidence = Math.min(payload.confidence, 0.25);
+                    payload.rationale = "No relevant document uploaded for this field. Upload lease/paystubs/provider letter to get grounded suggestions.";
+                    payload.citations = [];
+                    payload.flags = payload.flags || [];
+                    payload.flags.push({ code: "MISSING_EVIDENCE", severity: "error", message: "No supporting document available." });
+                }
+            }
+
+            // Apply suggestion
+            state.form[fieldId] = payload.value;
+            state.fieldMeta[fieldId] = {
+                field_id: fieldId,
+                suggested_value: payload.value,
+                confidence: payload.confidence,
+                confidenceLabel: labelConfidence(payload.confidence),
+                rationale: payload.rationale,
+                citations: payload.citations || [],
+                flags: payload.flags || [],
+                model: payload.model || "mock",
+                usage: { input_tokens: 0, output_tokens: 0 } // mock
+            };
+
+            renderForm();
+            toast("Suggested value", `${field.label} filled (${labelConfidence(payload.confidence)} confidence).`);
+        }
+
+        function showEvidence(fieldId) {
+            const meta = state.fieldMeta[fieldId];
+            if (!meta) {
+                toast("No evidence", "Run Suggest first to generate citations.");
+                return;
+            }
+            openModal({
+                fieldId,
+                value: state.form[fieldId] ?? "",
+                rationale: meta.rationale || "—",
+                citations: meta.citations || [],
+                json: meta
+            });
+        }
+
+        function suggestAll() {
+            formSchema.forEach(f => suggestField(f.id));
+        }
+
+        function resetForm() {
+            state.form = {};
+            state.fieldMeta = {};
+            renderForm();
+            toast("Form reset", "All fields cleared.");
+        }
+
+        function runPreviewAudit() {
+            // Deterministic checks + evidence checks (mock)
+            const flags = [];
+
+            // required fields
+            for (const f of formSchema) {
+                const v = (state.form[f.id] ?? "").toString().trim();
+                if (f.required && !v) {
+                    flags.push({
+                        severity: "BLOCKER",
+                        code: "REQUIRED_MISSING",
+                        field_id: f.id,
+                        message: `${f.label} is required.`,
+                        fix: "Fill this field (use Suggest if evidence is available)."
+                    });
+                }
+            }
+
+            // format checks
+            const stateVal = (state.form.state || "").toString().trim();
+            if (stateVal && !/^[A-Za-z]{2}$/.test(stateVal)) {
+                flags.push({ severity: "WARNING", code: "INVALID_STATE", field_id: "state", message: "State should be 2 letters (e.g., NY).", fix: "Use 2-letter state code." });
+            }
+
+            const zipVal = (state.form.zip || "").toString().trim();
+            if (zipVal && !/^\d{5}(-\d{4})?$/.test(zipVal)) {
+                flags.push({ severity: "WARNING", code: "INVALID_ZIP", field_id: "zip", message: "ZIP code format looks wrong.", fix: "Use 5-digit ZIP (or ZIP+4)." });
+            }
+
+            // evidence required fields
+            const evidenceFields = formSchema.filter(f => f.evidence);
+            let groundedCount = 0;
+            evidenceFields.forEach(f => {
+                const meta = state.fieldMeta[f.id];
+                const hasCites = meta && meta.citations && meta.citations.length > 0;
+                if (hasCites) groundedCount++;
+                const filled = (state.form[f.id] ?? "").toString().trim().length > 0;
+
+                if (filled && !hasCites) {
+                    flags.push({
+                        severity: "BLOCKER",
+                        code: "MISSING_EVIDENCE_REQUIRED",
+                        field_id: f.id,
+                        message: `${f.label} is filled but has no supporting evidence.`,
+                        fix: `Upload relevant documents (${(f.docTypes || []).join(", ") || "evidence"}) then re-run Suggest.`
+                    });
+                }
+            });
+
+            // accommodation length heuristic
+            const acc = (state.form.requested_accommodation || "").toString().trim();
+            if (acc && acc.length < 120) {
+                flags.push({
+                    severity: "WARNING",
+                    code: "ACCOMMODATION_TOO_SHORT",
+                    field_id: "requested_accommodation",
+                    message: "Accommodation description may be too brief to be persuasive.",
+                    fix: "Add what you need, why, and how it impacts housing access. (Avoid unnecessary medical details.)"
+                });
+            }
+
+            // simplistic rent/income plausibility
+            const rent = parseMoney(state.form.monthly_rent);
+            const income = parseMoney(state.form.monthly_gross_income);
+            if (rent != null && income != null && income > 0 && rent / income > 0.8) {
+                flags.push({
+                    severity: "INFO",
+                    code: "RENT_TO_INCOME_HIGH",
+                    field_id: "monthly_rent",
+                    message: "Rent-to-income ratio appears high based on provided values.",
+                    fix: "Ensure income and rent values are correct and supported by docs."
+                });
+            }
+
+            // sensitive content warning escalates severity
+            if ($("#sensitiveBanner").style.display === "block") {
+                flags.push({
+                    severity: "WARNING",
+                    code: "SENSITIVE_DATA_DETECTED",
+                    field_id: "__global__",
+                    message: "Potential secrets/PII detected in fields. In production, we would redact/block before any LLM call.",
+                    fix: "Remove secrets/credentials; only enter info relevant to the application."
+                });
+            }
+
+            // compute risk score
+            const blockers = flags.filter(f => f.severity === "BLOCKER").length;
+            const warnings = flags.filter(f => f.severity === "WARNING").length;
+            const infos = flags.filter(f => f.severity === "INFO").length;
+
+            const risk = Math.min(100, blockers * 22 + warnings * 10 + infos * 3 + (state.docs.length === 0 ? 18 : 0));
+
+            // evidence coverage
+            const coveragePct = evidenceFields.length ? Math.round((groundedCount / evidenceFields.length) * 100) : 0;
+
+            state.audit.last = { flags, blockers, warnings, infos, risk, coveragePct };
+            $("#auditStatus").textContent = blockers ? "Needs attention" : (warnings ? "Review warnings" : "Looks good");
+            $("#riskScore").textContent = risk;
+            $("#evidenceCoverage").textContent = `${coveragePct}%`;
+            $("#kpiBlockers").textContent = blockers;
+            $("#kpiWarnings").textContent = warnings;
+
+            renderFlags();
+            toast("Preview Audit complete", `${blockers} blocker(s), ${warnings} warning(s).`);
+        }
+
+        function parseMoney(v) {
+            if (v == null) return null;
+            const s = String(v).replaceAll(",", "").replaceAll("$", "").trim();
+            if (!s) return null;
+            const n = Number(s);
+            if (Number.isNaN(n)) return null;
+            return n;
+        }
+
+        function renderFlags() {
+            const audit = state.audit.last;
+            const wrap = $("#flags");
+            if (!audit) {
+                wrap.innerHTML = `<div class="hint">Run Preview Audit to see flags.</div>`;
+                return;
+            }
+            const tab = state.audit.activeTab;
+
+            let filtered = [];
+            if (tab === "blocker") filtered = audit.flags.filter(f => f.severity === "BLOCKER");
+            if (tab === "warning") filtered = audit.flags.filter(f => f.severity === "WARNING");
+            if (tab === "info") filtered = audit.flags.filter(f => f.severity === "INFO");
+
+            if (filtered.length === 0) {
+                wrap.innerHTML = `<div class="hint">No ${tab}s.</div>`;
+                return;
+            }
+
+            wrap.innerHTML = filtered.map(f => {
+                const sevBadge = f.severity === "BLOCKER" ? "b-bad" : (f.severity === "WARNING" ? "b-warn" : "b-info");
+                const fieldLabel = (f.field_id && f.field_id !== "__global__") ? (formSchema.find(x => x.id === f.field_id)?.label || f.field_id) : "Global";
+                return `
+        <div class="flag">
+          <div class="flag-top">
+            <div>
+              <span class="badge ${sevBadge}">${f.severity}</span>
+              <span style="margin-left:10px; font-weight:850">${escapeHtml(fieldLabel)}</span>
+              <div class="code" style="margin-top:6px">${escapeHtml(f.code)}</div>
+            </div>
+            <button class="mini secondary" onclick="window.__jumpToField('${f.field_id}')">Go to field</button>
+          </div>
+          <div class="msg">${escapeHtml(f.message)}</div>
+          <div class="fix"><strong>Fix:</strong> ${escapeHtml(f.fix || "—")}</div>
+        </div>
+      `;
+            }).join("");
+        }
+
+        window.__jumpToField = (fieldId) => {
+            if (!fieldId || fieldId === "__global__") return;
+            const el = document.getElementById(`in_${fieldId}`);
+            if (el) {
+                el.scrollIntoView({ behavior: "smooth", block: "center" });
+                el.focus();
+                toast("Jumped to field", formSchema.find(f => f.id === fieldId)?.label || fieldId);
+            }
+        };
+
+        // ----------------------------
+        // Modal
+        // ----------------------------
+        function openModal({ fieldId, value, rationale, citations, json }) {
+            $("#modalTitle").textContent = fieldId === "document_meta" ? "Document metadata" : "Evidence";
+            $("#modalField").textContent = fieldId;
+            $("#modalValue").textContent = value || "—";
+            $("#modalRationale").textContent = rationale || "—";
+            $("#modalJSON").textContent = JSON.stringify(json, null, 2);
+
+            const wrap = $("#modalCitations");
+            wrap.innerHTML = "";
+            if (!citations || citations.length === 0) {
+                wrap.innerHTML = `<div class="hint">No citations available.</div>`;
+            } else {
+                citations.forEach(c => {
+                    const el = document.createElement("div");
+                    el.className = "cite";
+                    el.innerHTML = `
+          <div class="left">
+            <div class="title">${escapeHtml(c.doc)} · ${escapeHtml(c.docType || "doc")} · p.${escapeHtml(c.page)} · ${escapeHtml(c.chunk)}</div>
+            <div class="snip">${escapeHtml(c.quote)}</div>
+          </div>
+          <div class="badge b-info">Citation</div>
+        `;
+                    wrap.appendChild(el);
+                });
+            }
+
+            $("#modalBackdrop").style.display = "flex";
+            $("#modalBackdrop").setAttribute("aria-hidden", "false");
+
+            $("#btnCopyJSON").onclick = async () => {
+                try {
+                    await navigator.clipboard.writeText($("#modalJSON").textContent);
+                    toast("Copied", "JSON payload copied to clipboard.");
+                } catch (e) {
+                    toast("Copy failed", "Clipboard permission blocked.");
+                }
+            };
+        }
+
+        function closeModal() {
+            $("#modalBackdrop").style.display = "none";
+            $("#modalBackdrop").setAttribute("aria-hidden", "true");
+        }
+
+        // ----------------------------
+        // Wire top-level controls
+        // ----------------------------
+        $("#btnAddSample").onclick = addSampleDocs;
+        $("#btnClearDocs").onclick = clearDocs;
+        $("#btnSuggestAll").onclick = () => { suggestAll(); };
+        $("#btnPreview").onclick = runPreviewAudit;
+        $("#btnResetForm").onclick = resetForm;
+
+        $("#btnCloseModal").onclick = closeModal;
+        $("#modalBackdrop").addEventListener("click", (e) => {
+            if (e.target.id === "modalBackdrop") closeModal();
+        });
+        window.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") closeModal();
+        });
+
+        // Tabs
+        $$(".tab").forEach(t => {
+            t.onclick = () => {
+                $$(".tab").forEach(x => x.classList.remove("active"));
+                t.classList.add("active");
+                state.audit.activeTab = t.getAttribute("data-tab");
+                renderFlags();
+            };
+        });
+
+        // Upload mock
+        $("#fileInput").addEventListener("change", (e) => {
+            const files = Array.from(e.target.files || []);
+            if (!files.length) return;
+            files.forEach(file => {
+                const docType = guessDocType(file.name);
+                state.docs.push({
+                    name: file.name,
+                    docType,
+                    status: "Processing",
+                    badge: "b-warn",
+                    pages: docType === "lease" ? 3 : 1
+                });
+            });
+            setDocCount();
+            renderDocs();
+            toast("Upload started", "Mock processing…");
+            // simulate processing -> ready
+            setTimeout(() => {
+                state.docs = state.docs.map(d => ({ ...d, status: "Ready", badge: "b-good" }));
+                renderDocs();
+                toast("Ingestion complete", "Docs ready (mock).");
+            }, 1100);
+        });
+
+        function guessDocType(name) {
+            const s = name.toLowerCase();
+            if (s.includes("paystub")) return "paystub";
+            if (s.includes("lease")) return "lease";
+            if (s.includes("utility")) return "utility_bill";
+            if (s.includes("provider") || s.includes("doctor")) return "provider_letter";
+            return "other";
+        }
+
+        // init
+        setDocCount();
+        renderDocs();
+        renderForm();
+    </script>
+</body>
+
+</html>
